@@ -1,4 +1,5 @@
 const { Readable } = require('streamx')
+const { LEFT, RIGHT, EQ_LEFT, EQ_RIGHT } = require('./constants')
 
 module.exports = class SortedUnionStream extends Readable {
   constructor (left, right, compare) {
@@ -45,8 +46,22 @@ module.exports = class SortedUnionStream extends Readable {
 
     const cmp = this.compare(l, r)
 
-    if (cmp === 0) {
+    if (cmp === EQ_LEFT) {
       this.push(l)
+      this.left.consume()
+      this.right.consume()
+      return cb(null)
+    }
+    /*
+     Added for comparators for objects
+       The case is like this:
+         Object with the same id is present in both streams
+         We want the one that has the newest timestamp
+         In current implementation the "left" is always chosen
+         but what is the one in the "right" is the newest
+    */
+    if (cmp === EQ_RIGHT) {
+      this.push(r)
       this.left.consume()
       this.right.consume()
       return cb(null)
@@ -125,5 +140,5 @@ class Peaker {
 }
 
 function defaultCompare (a, b) {
-  return a < b ? -1 : a > b ? 1 : 0
+  return a < b ? LEFT : a > b ? RIGHT : EQ_LEFT
 }
